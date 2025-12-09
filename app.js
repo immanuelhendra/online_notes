@@ -1,11 +1,25 @@
+// ---------- Constants ----------
+
 const STORAGE_KEY = "listBookData_v1";
+const CONFIG_STORAGE_KEY = "listBookConfig_v1";
+const DEFAULT_GIST_FILENAME = "listbook.json";
+
+// ---------- App state ----------
 
 let state = {
   notebooks: [],
   selectedNotebookId: null,
 };
 
-// DOM elements
+let config = {
+  gistId: "",
+  token: "",
+  fileName: DEFAULT_GIST_FILENAME,
+};
+
+// ---------- DOM elements ----------
+
+// Notebooks
 const notebookListEl = document.getElementById("notebook-list");
 const newNotebookForm = document.getElementById("new-notebook-form");
 const newNotebookInput = document.getElementById("new-notebook-input");
@@ -15,12 +29,19 @@ const notebookMetaEl = document.getElementById("notebook-meta");
 const renameNotebookBtn = document.getElementById("rename-notebook-btn");
 const deleteNotebookBtn = document.getElementById("delete-notebook-btn");
 
+// Items
 const newItemForm = document.getElementById("new-item-form");
 const newItemInput = document.getElementById("new-item-input");
 const itemsListEl = document.getElementById("items-list");
 const emptyStateEl = document.getElementById("empty-state");
 
-// ---------- Storage ----------
+// Sync UI
+const syncForm = document.getElementById("sync-form");
+const gistIdInput = document.getElementById("gist-id-input");
+const tokenInput = document.getElementById("token-input");
+const syncStatusEl = document.getElementById("sync-status");
+
+// ---------- Local storage: state ----------
 
 function loadState() {
   try {
@@ -37,7 +58,7 @@ function loadState() {
     state.notebooks = parsed.notebooks;
     state.selectedNotebookId = parsed.selectedNotebookId || null;
   } catch (err) {
-    console.error("Error loading data:", err);
+    console.error("Error loading local state:", err);
     state.notebooks = [];
     state.selectedNotebookId = null;
   }
@@ -53,19 +74,155 @@ function saveState() {
   );
 }
 
-// ---------- Helpers ----------
+// ---------- Local storage: sync config ----------
 
-function createId() {
-  return (
-    Date.now().toString(36) +
-    Math.random().toString(36).slice(2, 8)
+function loadConfig() {
+  try {
+    const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    config.gistId = parsed.gistId || "";
+    config.token = parsed.token || "";
+    config.fileName = parsed.fileName || DEFAULT_GIST_FILENAME;
+  } catch (err) {
+    console.error("Error loading sync config:", err);
+  }
+}
+
+function saveConfig() {
+  localStorage.setItem(
+    CONFIG_STORAGE_KEY,
+    JSON.stringify({
+      gistId: config.gistId,
+      token: config.token,
+      fileName: config.fileName || DEFAULT_GIST_FILENAME,
+    })
   );
 }
 
+function hasSyncConfig() {
+  return Boolean(config.gistId && config.token);
+}
+
+function updateSyncStatus(message) {
+  if (!syncStatusEl) return;
+  syncStatusEl.textContent = message;
+}
+
+// ---------- Helpers ----------
+
+function createId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
 function getSelectedNotebook() {
-  return state.notebooks.find(
-    (n) => n.id === state.selectedNotebookId
-  );
+  return state.notebooks.find((n) => n.id === state.selectedNotebookId);
+}
+
+function formatDateShort(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+// ---------- GitHub Gist sync ----------
+
+// Load from Gist into state (overwrites current state if valid data)
+async function loadStateFromGist() {
+  if (!hasSyncConfig()) {
+    updateSyncStatus("Sync: not configured");
+    return;
+  }
+
+  try {
+    updateSyncStatus("Sync: loading from GitHub…");
+
+    const res = await fetch(`https://api.github.com/gists/${config.gistId}`, {
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        Accept: "application/vnd.github+json",
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Gist load failed with status ${res.status}`);
+    }
+
+    const gist = await res.json();
+    const file = gist.files && gist.files[config.fileName];
+
+    if (!file || !file.content) {
+      // No file yet: create it using current local state
+      await saveStateToGist();
+      updateSyncStatus("Sync: created data file in Gist");
+      return;
+    }
+
+    const parsed = JSON.parse(file.content);
+    if (Array.isArray(parsed.notebooks)) {
+      state.notebooks = parsed.notebooks;
+      state.selectedNotebookId = parsed.selectedNotebookId || null;
+      saveState(); // keep local cache in sync
+      render();
+      updateSyncStatus("Sync: loaded from GitHub");
+    } else {
+      updateSyncStatus("Sync: Gist content invalid, using local data");
+    }
+  } catch (err) {
+    console.error("Error loading from Gist:", err);
+    updateSyncStatus("Sync: error loading from GitHub (see console)");
+  }
+}
+
+// Save current state to Gist
+async function saveStateToGist() {
+  if (!hasSyncConfig()) return;
+
+  const body = {
+    files: {
+      [config.fileName]: {
+        content: JSON.stringify({
+          notebooks: state.notebooks,
+          selectedNotebookId: state.selectedNotebookId,
+        }),
+      },
+    },
+  };
+
+  const res = await fetch(`https://api.github.com/gists/${config.gistId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${config.token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Gist save failed with status ${res.status}`);
+  }
+
+  return res.json();
+}
+
+// Convenience wrapper (non-blocking)
+function syncToGist() {
+  if (!hasSyncConfig()) return;
+  updateSyncStatus("Sync: saving to GitHub…");
+  saveStateToGist()
+    .then(() => {
+      updateSyncStatus("Sync: up to date ✅");
+    })
+    .catch((err) => {
+      console.error("Error saving to Gist:", err);
+      updateSyncStatus("Sync: error saving (check token/Gist ID)");
+    });
 }
 
 // ---------- Notebooks ----------
@@ -81,6 +238,7 @@ function createNotebook(name) {
   state.selectedNotebookId = notebook.id;
   saveState();
   render();
+  syncToGist();
 }
 
 function renameNotebook(newName) {
@@ -89,6 +247,7 @@ function renameNotebook(newName) {
   notebook.name = newName.trim() || notebook.name;
   saveState();
   render();
+  syncToGist();
 }
 
 function deleteNotebook() {
@@ -106,6 +265,7 @@ function deleteNotebook() {
   }
   saveState();
   render();
+  syncToGist();
 }
 
 function selectNotebook(id) {
@@ -129,6 +289,7 @@ function addItem(text) {
   });
   saveState();
   render();
+  syncToGist();
 }
 
 function toggleItemDone(itemId) {
@@ -139,6 +300,7 @@ function toggleItemDone(itemId) {
   item.done = !item.done;
   saveState();
   render();
+  syncToGist();
 }
 
 function editItem(itemId, newText) {
@@ -151,6 +313,7 @@ function editItem(itemId, newText) {
   item.text = cleanText;
   saveState();
   render();
+  syncToGist();
 }
 
 function deleteItem(itemId) {
@@ -161,6 +324,7 @@ function deleteItem(itemId) {
   notebook.items.splice(idx, 1);
   saveState();
   render();
+  syncToGist();
 }
 
 // ---------- Rendering ----------
@@ -202,23 +366,14 @@ function renderNotebooks() {
 
     const metaSpan = document.createElement("span");
     metaSpan.className = "notebook-meta-small";
-    metaSpan.textContent = `${nb.items.length} item${nb.items.length === 1 ? "" : "s"}`;
+    metaSpan.textContent = `${nb.items.length} item${
+      nb.items.length === 1 ? "" : "s"
+    }`;
 
     btn.appendChild(left);
     btn.appendChild(metaSpan);
     li.appendChild(btn);
     notebookListEl.appendChild(li);
-  });
-}
-
-function formatDateShort(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
   });
 }
 
@@ -243,8 +398,12 @@ function renderMain() {
   notebookTitleEl.textContent = notebook.name;
   const created = formatDateShort(notebook.createdAt);
   notebookMetaEl.textContent = created
-    ? `Created ${created} • ${notebook.items.length} item${notebook.items.length === 1 ? "" : "s"}`
-    : `${notebook.items.length} item${notebook.items.length === 1 ? "" : "s"}`;
+    ? `Created ${created} • ${notebook.items.length} item${
+        notebook.items.length === 1 ? "" : "s"
+      }`
+    : `${notebook.items.length} item${
+        notebook.items.length === 1 ? "" : "s"
+      }`;
 
   itemsListEl.innerHTML = "";
 
@@ -384,7 +543,38 @@ itemsListEl.addEventListener("click", (e) => {
   }
 });
 
+// Sync form submit
+syncForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  config.gistId = (gistIdInput.value || "").trim();
+  config.token = (tokenInput.value || "").trim();
+  config.fileName = DEFAULT_GIST_FILENAME;
+  saveConfig();
+
+  if (!hasSyncConfig()) {
+    updateSyncStatus("Sync: not configured (missing Gist ID or token)");
+    return;
+  }
+
+  updateSyncStatus("Sync: loading from GitHub…");
+  loadStateFromGist();
+});
+
 // ---------- Init ----------
 
-loadState();
-render();
+(function init() {
+  loadConfig();
+  // Prefill inputs from config
+  if (gistIdInput) gistIdInput.value = config.gistId || "";
+  if (tokenInput) tokenInput.value = config.token || "";
+
+  loadState();
+  render();
+
+  if (hasSyncConfig()) {
+    // Try to load from GitHub on startup
+    loadStateFromGist();
+  } else {
+    updateSyncStatus("Sync: not configured");
+  }
+})();
