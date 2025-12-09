@@ -40,43 +40,24 @@
           <button type="submit" class="btn btn-primary">+ Add Notebook</button>
         </form>
       </section>
-    </aside>
 
-    <main class="main">
-      <header class="main-header">
-        <div class="title-group">
-          <h2 id="notebook-title" class="main-title">Select or create a notebook</h2>
-          <p id="notebook-meta" class="main-meta">No notebook selected.</p>
-        </div>
-        <div class="main-actions">
-          <button id="rename-notebook-btn" class="btn btn-ghost" disabled>Rename</button>
-          <button id="delete-notebook-btn" class="btn btn-danger" disabled>Delete</button>
-        </div>
-      </header>
+      <!-- NEW: Sync (GitHub Gist) section -->
+      <section class="sync-card">
+        <h3 class="sync-title">Cloud sync</h3>
+        <p class="sync-text">
+          Sync using a private GitHub Gist so your notes stay the same on all devices.
+        </p>
 
-      <section class="items-section">
-        <form id="new-item-form" class="new-item-form">
+        <form id="sync-form" class="sync-form" autocomplete="off">
           <input
             type="text"
-            id="new-item-input"
-            class="input"
-            placeholder="Add a new item..."
+            id="gist-id-input"
+            class="input sync-input"
+            placeholder="Gist ID (required)"
             autocomplete="off"
           />
-          <button type="submit" class="btn btn-primary">Add</button>
-        </form>
-
-        <ul id="items-list" class="items-list">
-          <!-- Filled by JS -->
-        </ul>
-
-        <div id="empty-state" class="empty-state">
-          <p>Create a notebook on the left, then start dropping in your lists ✨</p>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <script src="app.js"></script>
-</body>
-</html>
+          <input
+            type="password"
+            id="token-input"
+            class="input sync-input"
+            placeholder="GitHub token with
