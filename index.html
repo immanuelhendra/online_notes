@@ -624,527 +624,588 @@
   </div>
 
   <script>
-    // ---------- Keys ----------
-    const STORAGE_KEY = "listBookData_v1";
-    const CONFIG_STORAGE_KEY = "listBookConfig_v1";
-    const DEFAULT_GIST_FILENAME = "listbook.json";
+  // ---------- Keys ----------
+  const STORAGE_KEY = "listBookData_v1";
+  const CONFIG_STORAGE_KEY = "listBookConfig_v1";
+  const DEFAULT_GIST_FILENAME = "listbook.json";
 
-    // ---------- State ----------
-    let state = {
-      notebooks: [],
-      selectedNotebookId: null,
-    };
+  // ---------- State ----------
+  let state = {
+    notebooks: [],
+    selectedNotebookId: null,
+  };
 
-    let config = {
-      gistId: "",
-      token: "",
-      fileName: DEFAULT_GIST_FILENAME,
-    };
+  let config = {
+    gistId: "",
+    token: "",
+    fileName: DEFAULT_GIST_FILENAME,
+  };
 
-    // ---------- DOM ----------
-    const notebookListEl = document.getElementById("notebook-list");
-    const newNotebookForm = document.getElementById("new-notebook-form");
-    const newNotebookInput = document.getElementById("new-notebook-input");
+  // ---------- DOM ----------
+  const notebookListEl = document.getElementById("notebook-list");
+  const newNotebookForm = document.getElementById("new-notebook-form");
+  const newNotebookInput = document.getElementById("new-notebook-input");
 
-    const notebookTitleEl = document.getElementById("notebook-title");
-    const notebookMetaEl = document.getElementById("notebook-meta");
-    const renameNotebookBtn = document.getElementById("rename-notebook-btn");
-    const deleteNotebookBtn = document.getElementById("delete-notebook-btn");
+  const notebookTitleEl = document.getElementById("notebook-title");
+  const notebookMetaEl = document.getElementById("notebook-meta");
+  const renameNotebookBtn = document.getElementById("rename-notebook-btn");
+  const deleteNotebookBtn = document.getElementById("delete-notebook-btn");
 
-    const newItemForm = document.getElementById("new-item-form");
-    const newItemInput = document.getElementById("new-item-input");
-    const itemsListEl = document.getElementById("items-list");
-    const emptyStateEl = document.getElementById("empty-state");
+  const newItemForm = document.getElementById("new-item-form");
+  const newItemInput = document.getElementById("new-item-input");
+  const itemsListEl = document.getElementById("items-list");
+  const emptyStateEl = document.getElementById("empty-state");
 
-    const syncForm = document.getElementById("sync-form");
-    const gistIdInput = document.getElementById("gist-id-input");
-    const tokenInput = document.getElementById("token-input");
-    const syncStatusEl = document.getElementById("sync-status");
+  const syncForm = document.getElementById("sync-form");
+  const gistIdInput = document.getElementById("gist-id-input");
+  const tokenInput = document.getElementById("token-input");
+  const syncStatusEl = document.getElementById("sync-status");
 
-    // ---------- Local storage: state ----------
+  // ---------- Local storage: state ----------
 
-    function loadState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) {
-          state.notebooks = [];
-          state.selectedNotebookId = null;
-          return;
-        }
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed.notebooks)) throw new Error("Invalid data");
-        state.notebooks = parsed.notebooks;
-        state.selectedNotebookId = parsed.selectedNotebookId || null;
-      } catch (err) {
-        console.error("Error loading local state:", err);
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
         state.notebooks = [];
         state.selectedNotebookId = null;
-      }
-    }
-
-    function saveState() {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          notebooks: state.notebooks,
-          selectedNotebookId: state.selectedNotebookId,
-        })
-      );
-    }
-
-    // ---------- Local storage: config ----------
-
-    function loadConfig() {
-      try {
-        const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
-        if (!raw) return;
-        const parsed = JSON.parse(raw);
-        config.gistId = parsed.gistId || "";
-        config.token = parsed.token || "";
-        config.fileName = parsed.fileName || DEFAULT_GIST_FILENAME;
-      } catch (err) {
-        console.error("Error loading sync config:", err);
-      }
-    }
-
-    function saveConfig() {
-      localStorage.setItem(
-        CONFIG_STORAGE_KEY,
-        JSON.stringify({
-          gistId: config.gistId,
-          token: config.token,
-          fileName: config.fileName || DEFAULT_GIST_FILENAME,
-        })
-      );
-    }
-
-    function hasSyncConfig() {
-      return Boolean(config.gistId && config.token);
-    }
-
-    function updateSyncStatus(message) {
-      if (syncStatusEl) syncStatusEl.textContent = message;
-    }
-
-    // ---------- Helpers ----------
-
-    function createId() {
-      return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    }
-
-    function getSelectedNotebook() {
-      return state.notebooks.find((n) => n.id === state.selectedNotebookId);
-    }
-
-    function formatDateShort(iso) {
-      if (!iso) return "";
-      const d = new Date(iso);
-      if (Number.isNaN(d.getTime())) return "";
-      return d.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    }
-
-    // ---------- Gist sync ----------
-
-    async function loadStateFromGist() {
-      if (!hasSyncConfig()) {
-        updateSyncStatus("Sync: not configured");
         return;
       }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed.notebooks)) throw new Error("Invalid data");
+      state.notebooks = parsed.notebooks;
+      state.selectedNotebookId = parsed.selectedNotebookId || null;
+    } catch (err) {
+      console.error("Error loading local state:", err);
+      state.notebooks = [];
+      state.selectedNotebookId = null;
+    }
+  }
 
-      try {
-        updateSyncStatus("Sync: loading from GitHub…");
+  function saveState() {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        notebooks: state.notebooks,
+        selectedNotebookId: state.selectedNotebookId,
+      })
+    );
+  }
 
-        const res = await fetch("https://api.github.com/gists/" + config.gistId, {
-          headers: {
-            Authorization: "Bearer " + config.token,
-            Accept: "application/vnd.github+json",
-          },
-        });
+  // ---------- Local storage: config ----------
 
-        if (!res.ok) throw new Error("Status " + res.status);
-        const gist = await res.json();
-        const file = gist.files && gist.files[config.fileName];
+  function loadConfig() {
+    try {
+      const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      config.gistId = parsed.gistId || "";
+      config.token = parsed.token || "";
+      config.fileName = parsed.fileName || DEFAULT_GIST_FILENAME;
+    } catch (err) {
+      console.error("Error loading sync config:", err);
+    }
+  }
 
-        if (!file || !file.content) {
-          // No file yet: create it with current local state
-          await saveStateToGist();
-          updateSyncStatus("Sync: created data file in Gist");
-          return;
-        }
+  function saveConfig() {
+    localStorage.setItem(
+      CONFIG_STORAGE_KEY,
+      JSON.stringify({
+        gistId: config.gistId,
+        token: config.token,
+        fileName: config.fileName || DEFAULT_GIST_FILENAME,
+      })
+    );
+  }
 
-        const parsed = JSON.parse(file.content);
-        if (Array.isArray(parsed.notebooks)) {
-          state.notebooks = parsed.notebooks;
-          state.selectedNotebookId = parsed.selectedNotebookId || null;
-          saveState();
-          render();
-          updateSyncStatus("Sync: loaded from GitHub");
-        } else {
-          updateSyncStatus("Sync: Gist content invalid, using local data");
-        }
-      } catch (err) {
-        console.error("Error loading from Gist:", err);
-        updateSyncStatus("Sync: error loading from GitHub");
-      }
+  function hasSyncConfig() {
+    return Boolean(config.gistId && config.token);
+  }
+
+  function updateSyncStatus(message) {
+    if (syncStatusEl) syncStatusEl.textContent = message;
+  }
+
+  // ---------- Helpers ----------
+
+  function createId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function getSelectedNotebook() {
+    return state.notebooks.find((n) => n.id === state.selectedNotebookId);
+  }
+
+  function formatDateShort(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }
+
+  // ---------- Gist sync ----------
+
+  async function loadStateFromGist() {
+    if (!hasSyncConfig()) {
+      updateSyncStatus("Sync: not configured");
+      return;
     }
 
-    async function saveStateToGist() {
-      if (!hasSyncConfig()) return;
-
-      const body = {
-        files: {
-          [config.fileName]: {
-            content: JSON.stringify({
-              notebooks: state.notebooks,
-              selectedNotebookId: state.selectedNotebookId,
-            }),
-          },
-        },
-      };
+    try {
+      updateSyncStatus("Sync: loading from GitHub…");
 
       const res = await fetch("https://api.github.com/gists/" + config.gistId, {
-        method: "PATCH",
         headers: {
           Authorization: "Bearer " + config.token,
           Accept: "application/vnd.github+json",
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify(body),
       });
 
       if (!res.ok) throw new Error("Status " + res.status);
-      return res.json();
-    }
+      const gist = await res.json();
+      const file = gist.files && gist.files[config.fileName];
 
-    function syncToGist() {
-      if (!hasSyncConfig()) return;
-      updateSyncStatus("Sync: saving to GitHub…");
-      saveStateToGist()
-        .then(() => updateSyncStatus("Sync: up to date ✅"))
-        .catch((err) => {
-          console.error("Error saving to Gist:", err);
-          updateSyncStatus("Sync: error saving (check token/Gist ID)");
-        });
-    }
-
-    // ---------- Notebooks ----------
-
-    function createNotebook(name) {
-      const notebook = {
-        id: createId(),
-        name: name.trim() || "Untitled",
-        createdAt: new Date().toISOString(),
-        items: [],
-      };
-      state.notebooks.unshift(notebook);
-      state.selectedNotebookId = notebook.id;
-      saveState();
-      render();
-      syncToGist();
-    }
-
-    function renameNotebook(newName) {
-      const nb = getSelectedNotebook();
-      if (!nb) return;
-      nb.name = newName.trim() || nb.name;
-      saveState();
-      render();
-      syncToGist();
-    }
-
-    function deleteNotebook() {
-      if (!state.selectedNotebookId) return;
-      const idx = state.notebooks.findIndex((n) => n.id === state.selectedNotebookId);
-      if (idx === -1) return;
-      state.notebooks.splice(idx, 1);
-      state.selectedNotebookId = state.notebooks[0]?.id || null;
-      saveState();
-      render();
-      syncToGist();
-    }
-
-    function selectNotebook(id) {
-      state.selectedNotebookId = id;
-      saveState();
-      render();
-    }
-
-    // ---------- Items ----------
-
-    function addItem(text) {
-      const nb = getSelectedNotebook();
-      if (!nb) return;
-      const clean = text.trim();
-      if (!clean) return;
-      nb.items.unshift({
-        id: createId(),
-        text: clean,
-        done: false,
-        createdAt: new Date().toISOString(),
-      });
-      saveState();
-      render();
-      syncToGist();
-    }
-
-    function toggleItemDone(itemId) {
-      const nb = getSelectedNotebook();
-      if (!nb) return;
-      const item = nb.items.find((i) => i.id === itemId);
-      if (!item) return;
-      item.done = !item.done;
-      saveState();
-      render();
-      syncToGist();
-    }
-
-    function editItem(itemId, newText) {
-      const nb = getSelectedNotebook();
-      if (!nb) return;
-      const item = nb.items.find((i) => i.id === itemId);
-      if (!item) return;
-      const clean = newText.trim();
-      if (!clean) return;
-      item.text = clean;
-      saveState();
-      render();
-      syncToGist();
-    }
-
-    function deleteItem(itemId) {
-      const nb = getSelectedNotebook();
-      if (!nb) return;
-      const idx = nb.items.findIndex((i) => i.id === itemId);
-      if (idx === -1) return;
-      nb.items.splice(idx, 1);
-      saveState();
-      render();
-      syncToGist();
-    }
-
-    // ---------- Rendering ----------
-
-    function renderNotebooks() {
-      notebookListEl.innerHTML = "";
-      if (state.notebooks.length === 0) {
-        const li = document.createElement("li");
-        li.style.fontSize = "12px";
-        li.style.color = "var(--text-soft)";
-        li.textContent = "No notebooks yet. Start by adding one below.";
-        notebookListEl.appendChild(li);
+      if (!file || !file.content) {
+        // No file yet: create it with current local state
+        await saveStateToGist();
+        updateSyncStatus("Sync: created data file in Gist");
         return;
       }
 
-      state.notebooks.forEach((nb) => {
-        const li = document.createElement("li");
-        const btn = document.createElement("button");
-        btn.className = "notebook-btn";
-        btn.dataset.id = nb.id;
-        if (nb.id === state.selectedNotebookId) btn.classList.add("active");
-
-        const left = document.createElement("div");
-        left.className = "notebook-main";
-
-        const dot = document.createElement("div");
-        dot.className = "notebook-dot";
-
-        const nameSpan = document.createElement("span");
-        nameSpan.className = "notebook-name";
-        nameSpan.textContent = nb.name;
-
-        left.appendChild(dot);
-        left.appendChild(nameSpan);
-
-        const metaSpan = document.createElement("span");
-        metaSpan.className = "notebook-meta-small";
-        metaSpan.textContent = nb.items.length + " item" + (nb.items.length === 1 ? "" : "s");
-
-        btn.appendChild(left);
-        btn.appendChild(metaSpan);
-        li.appendChild(btn);
-        notebookListEl.appendChild(li);
-      });
-    }
-
-    function renderMain() {
-      const nb = getSelectedNotebook();
-
-      if (!nb) {
-        notebookTitleEl.textContent = "Select or create a notebook";
-        notebookMetaEl.textContent = "No notebook selected.";
-        renameNotebookBtn.disabled = true;
-        deleteNotebookBtn.disabled = true;
-        newItemInput.disabled = true;
-        itemsListEl.innerHTML = "";
-        emptyStateEl.style.display = "block";
-        return;
-      }
-
-      renameNotebookBtn.disabled = false;
-      deleteNotebookBtn.disabled = false;
-      newItemInput.disabled = false;
-
-      notebookTitleEl.textContent = nb.name;
-      const created = formatDateShort(nb.createdAt);
-      notebookMetaEl.textContent = created
-        ? "Created " + created + " • " + nb.items.length + " item" + (nb.items.length === 1 ? "" : "s")
-        : nb.items.length + " item" + (nb.items.length === 1 ? "" : "s");
-
-      itemsListEl.innerHTML = "";
-      emptyStateEl.style.display = nb.items.length === 0 ? "block" : "none";
-
-      nb.items.forEach((item) => {
-        const li = document.createElement("li");
-        li.className = "item";
-        li.dataset.id = item.id;
-
-        const left = document.createElement("div");
-        left.className = "item-left";
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.className = "item-checkbox";
-        checkbox.checked = item.done;
-
-        const textSpan = document.createElement("span");
-        textSpan.className = "item-text";
-        if (item.done) textSpan.classList.add("completed");
-        textSpan.textContent = item.text;
-
-        left.appendChild(checkbox);
-        left.appendChild(textSpan);
-
-        const actions = document.createElement("div");
-        actions.className = "item-actions";
-
-        const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.className = "btn btn-ghost";
-        editBtn.textContent = "Edit";
-        editBtn.dataset.action = "edit";
-
-        const deleteBtn = document.createElement("button");
-        deleteBtn.type = "button";
-        deleteBtn.className = "btn btn-danger";
-        deleteBtn.textContent = "Delete";
-        deleteBtn.dataset.action = "delete";
-
-        actions.appendChild(editBtn);
-        actions.appendChild(deleteBtn);
-
-        li.appendChild(left);
-        li.appendChild(actions);
-
-        itemsListEl.appendChild(li);
-      });
-    }
-
-    function render() {
-      renderNotebooks();
-      renderMain();
-    }
-
-    // ---------- Events ----------
-
-    newNotebookForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if (!newNotebookInput.value.trim()) return;
-      createNotebook(newNotebookInput.value);
-      newNotebookInput.value = "";
-    });
-
-    notebookListEl.addEventListener("click", (e) => {
-      const btn = e.target.closest(".notebook-btn");
-      if (!btn) return;
-      selectNotebook(btn.dataset.id);
-    });
-
-    renameNotebookBtn.addEventListener("click", () => {
-      const nb = getSelectedNotebook();
-      if (!nb) return;
-      const newName = window.prompt("Rename notebook:", nb.name);
-      if (newName === null || !newName.trim()) return;
-      renameNotebook(newName);
-    });
-
-    deleteNotebookBtn.addEventListener("click", () => {
-      const nb = getSelectedNotebook();
-      if (!nb) return;
-      if (!window.confirm('Delete notebook "' + nb.name + '" and all its items?')) return;
-      deleteNotebook();
-    });
-
-    newItemForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if (!state.selectedNotebookId) return;
-      if (!newItemInput.value.trim()) return;
-      addItem(newItemInput.value);
-      newItemInput.value = "";
-    });
-
-    itemsListEl.addEventListener("click", (e) => {
-      const li = e.target.closest(".item");
-      if (!li) return;
-      const itemId = li.dataset.id;
-
-      if (e.target.matches(".item-checkbox")) {
-        toggleItemDone(itemId);
-        return;
-      }
-
-      const btn = e.target.closest("button[data-action]");
-      if (!btn) return;
-      const action = btn.dataset.action;
-
-      if (action === "delete") {
-        deleteItem(itemId);
-      } else if (action === "edit") {
-        const nb = getSelectedNotebook();
-        if (!nb) return;
-        const item = nb.items.find((i) => i.id === itemId);
-        if (!item) return;
-        const newText = window.prompt("Edit item:", item.text);
-        if (newText === null || !newText.trim()) return;
-        editItem(itemId, newText);
-      }
-    });
-
-    if (syncForm) {
-      syncForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        config.gistId = (gistIdInput.value || "").trim();
-        config.token = (tokenInput.value || "").trim();
-        config.fileName = DEFAULT_GIST_FILENAME;
-        saveConfig();
-
-        if (!hasSyncConfig()) {
-          updateSyncStatus("Sync: not configured (missing Gist ID or token)");
-          return;
-        }
-
-        updateSyncStatus("Sync: loading from GitHub…");
-        loadStateFromGist();
-      });
-    }
-
-    // ---------- Init ----------
-    (function init() {
-      loadConfig();
-      if (gistIdInput) gistIdInput.value = config.gistId || "";
-      if (tokenInput) tokenInput.value = config.token || "";
-      loadState();
-      render();
-
-      if (hasSyncConfig()) {
-        loadStateFromGist();
+      const parsed = JSON.parse(file.content);
+      if (Array.isArray(parsed.notebooks)) {
+        state.notebooks = parsed.notebooks;
+        state.selectedNotebookId = parsed.selectedNotebookId || null;
+        saveState();
+        render();
+        updateSyncStatus("Sync: loaded from GitHub");
       } else {
-        updateSyncStatus("Sync: not configured");
+        updateSyncStatus("Sync: Gist content invalid, using local data");
       }
-    })();
-  </script>
+    } catch (err) {
+      console.error("Error loading from Gist:", err);
+      updateSyncStatus("Sync: error loading from GitHub");
+    }
+  }
+
+  async function saveStateToGist() {
+    if (!hasSyncConfig()) return;
+
+    const body = {
+      files: {
+        [config.fileName]: {
+          content: JSON.stringify({
+            notebooks: state.notebooks,
+            selectedNotebookId: state.selectedNotebookId,
+          }),
+        },
+      },
+    };
+
+    const res = await fetch("https://api.github.com/gists/" + config.gistId, {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + config.token,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) throw new Error("Status " + res.status);
+    return res.json();
+  }
+
+  function syncToGist() {
+    if (!hasSyncConfig()) return;
+    updateSyncStatus("Sync: saving to GitHub…");
+    saveStateToGist()
+      .then(() => updateSyncStatus("Sync: up to date ✅"))
+      .catch((err) => {
+        console.error("Error saving to Gist:", err);
+        updateSyncStatus("Sync: error saving (check token/Gist ID)");
+      });
+  }
+
+  // Ask for Gist ID + token the first time (or if config missing)
+  async function ensureSyncConfigInteractive() {
+    loadConfig();
+
+    // If already configured, just reflect in UI and load from Gist
+    if (hasSyncConfig()) {
+      if (gistIdInput) gistIdInput.value = config.gistId;
+      if (tokenInput) tokenInput.value = ""; // never re-show the token
+      await loadStateFromGist();
+      return;
+    }
+
+    // Ask user on first load
+    const gistId = window.prompt(
+      "Enter your GitHub Gist ID for cloud sync (leave empty to work offline):",
+      ""
+    );
+
+    if (!gistId) {
+      updateSyncStatus("Sync: not configured (offline mode)");
+      return;
+    }
+
+    const token = window.prompt(
+      "Enter your GitHub personal access token with 'gist' scope:",
+      ""
+    );
+
+    if (!token) {
+      updateSyncStatus("Sync: missing token, sync disabled");
+      return;
+    }
+
+    config.gistId = gistId.trim();
+    config.token = token.trim();
+    config.fileName = DEFAULT_GIST_FILENAME;
+    saveConfig();
+
+    if (gistIdInput) gistIdInput.value = config.gistId;
+    if (tokenInput) tokenInput.value = "";
+
+    await loadStateFromGist();
+  }
+
+  // ---------- Notebooks ----------
+
+  function createNotebook(name) {
+    const notebook = {
+      id: createId(),
+      name: name.trim() || "Untitled",
+      createdAt: new Date().toISOString(),
+      items: [],
+    };
+    state.notebooks.unshift(notebook);
+    state.selectedNotebookId = notebook.id;
+    saveState();
+    render();
+    syncToGist();
+  }
+
+  function renameNotebook(newName) {
+    const nb = getSelectedNotebook();
+    if (!nb) return;
+    nb.name = newName.trim() || nb.name;
+    saveState();
+    render();
+    syncToGist();
+  }
+
+  function deleteNotebook() {
+    if (!state.selectedNotebookId) return;
+    const idx = state.notebooks.findIndex((n) => n.id === state.selectedNotebookId);
+    if (idx === -1) return;
+    state.notebooks.splice(idx, 1);
+    state.selectedNotebookId = state.notebooks[0]?.id || null;
+    saveState();
+    render();
+    syncToGist();
+  }
+
+  function selectNotebook(id) {
+    state.selectedNotebookId = id;
+    saveState();
+    render();
+  }
+
+  // ---------- Items ----------
+
+  function addItem(text) {
+    const nb = getSelectedNotebook();
+    if (!nb) return;
+    const clean = text.trim();
+    if (!clean) return;
+    nb.items.unshift({
+      id: createId(),
+      text: clean,
+      done: false,
+      createdAt: new Date().toISOString(),
+    });
+    saveState();
+    render();
+    syncToGist();
+  }
+
+  function toggleItemDone(itemId) {
+    const nb = getSelectedNotebook();
+    if (!nb) return;
+    const item = nb.items.find((i) => i.id === itemId);
+    if (!item) return;
+    item.done = !item.done;
+    saveState();
+    render();
+    syncToGist();
+  }
+
+  function editItem(itemId, newText) {
+    const nb = getSelectedNotebook();
+    if (!nb) return;
+    const item = nb.items.find((i) => i.id === itemId);
+    if (!item) return;
+    const clean = newText.trim();
+    if (!clean) return;
+    item.text = clean;
+    saveState();
+    render();
+    syncToGist();
+  }
+
+  function deleteItem(itemId) {
+    const nb = getSelectedNotebook();
+    if (!nb) return;
+    const idx = nb.items.findIndex((i) => i.id === itemId);
+    if (idx === -1) return;
+    nb.items.splice(idx, 1);
+    saveState();
+    render();
+    syncToGist();
+  }
+
+  // ---------- Rendering ----------
+
+  function renderNotebooks() {
+    notebookListEl.innerHTML = "";
+    if (state.notebooks.length === 0) {
+      const li = document.createElement("li");
+      li.style.fontSize = "12px";
+      li.style.color = "var(--text-soft)";
+      li.textContent = "No notebooks yet. Start by adding one below.";
+      notebookListEl.appendChild(li);
+      return;
+    }
+
+    state.notebooks.forEach((nb) => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.className = "notebook-btn";
+      btn.dataset.id = nb.id;
+      if (nb.id === state.selectedNotebookId) btn.classList.add("active");
+
+      const left = document.createElement("div");
+      left.className = "notebook-main";
+
+      const dot = document.createElement("div");
+      dot.className = "notebook-dot";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "notebook-name";
+      nameSpan.textContent = nb.name;
+
+      left.appendChild(dot);
+      left.appendChild(nameSpan);
+
+      const metaSpan = document.createElement("span");
+      metaSpan.className = "notebook-meta-small";
+      metaSpan.textContent =
+        nb.items.length + " item" + (nb.items.length === 1 ? "" : "s");
+
+      btn.appendChild(left);
+      btn.appendChild(metaSpan);
+      li.appendChild(btn);
+      notebookListEl.appendChild(li);
+    });
+  }
+
+  function renderMain() {
+    const nb = getSelectedNotebook();
+
+    if (!nb) {
+      notebookTitleEl.textContent = "Select or create a notebook";
+      notebookMetaEl.textContent = "No notebook selected.";
+      renameNotebookBtn.disabled = true;
+      deleteNotebookBtn.disabled = true;
+      newItemInput.disabled = true;
+      itemsListEl.innerHTML = "";
+      emptyStateEl.style.display = "block";
+      return;
+    }
+
+    renameNotebookBtn.disabled = false;
+    deleteNotebookBtn.disabled = false;
+    newItemInput.disabled = false;
+
+    notebookTitleEl.textContent = nb.name;
+    const created = formatDateShort(nb.createdAt);
+    notebookMetaEl.textContent = created
+      ? "Created " +
+        created +
+        " • " +
+        nb.items.length +
+        " item" +
+        (nb.items.length === 1 ? "" : "s")
+      : nb.items.length + " item" + (nb.items.length === 1 ? "" : "s");
+
+    itemsListEl.innerHTML = "";
+    emptyStateEl.style.display = nb.items.length === 0 ? "block" : "none";
+
+    nb.items.forEach((item) => {
+      const li = document.createElement("li");
+      li.className = "item";
+      li.dataset.id = item.id;
+
+      const left = document.createElement("div");
+      left.className = "item-left";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "item-checkbox";
+      checkbox.checked = item.done;
+
+      const textSpan = document.createElement("span");
+      textSpan.className = "item-text";
+      if (item.done) textSpan.classList.add("completed");
+      textSpan.textContent = item.text;
+
+      left.appendChild(checkbox);
+      left.appendChild(textSpan);
+
+      const actions = document.createElement("div");
+      actions.className = "item-actions";
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "btn btn-ghost";
+      editBtn.textContent = "Edit";
+      editBtn.dataset.action = "edit";
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "btn btn-danger";
+      deleteBtn.textContent = "Delete";
+      deleteBtn.dataset.action = "delete";
+
+      actions.appendChild(editBtn);
+      actions.appendChild(deleteBtn);
+
+      li.appendChild(left);
+      li.appendChild(actions);
+
+      itemsListEl.appendChild(li);
+    });
+  }
+
+  function render() {
+    renderNotebooks();
+    renderMain();
+  }
+
+  // ---------- Events ----------
+
+  newNotebookForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!newNotebookInput.value.trim()) return;
+    createNotebook(newNotebookInput.value);
+    newNotebookInput.value = "";
+  });
+
+  notebookListEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".notebook-btn");
+    if (!btn) return;
+    selectNotebook(btn.dataset.id);
+  });
+
+  renameNotebookBtn.addEventListener("click", () => {
+    const nb = getSelectedNotebook();
+    if (!nb) return;
+    const newName = window.prompt("Rename notebook:", nb.name);
+    if (newName === null || !newName.trim()) return;
+    renameNotebook(newName);
+  });
+
+  deleteNotebookBtn.addEventListener("click", () => {
+    const nb = getSelectedNotebook();
+    if (!nb) return;
+    if (
+      !window.confirm(
+        'Delete notebook "' + nb.name + '" and all its items?'
+      )
+    )
+      return;
+    deleteNotebook();
+  });
+
+  newItemForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!state.selectedNotebookId) return;
+    if (!newItemInput.value.trim()) return;
+    addItem(newItemInput.value);
+    newItemInput.value = "";
+  });
+
+  itemsListEl.addEventListener("click", (e) => {
+    const li = e.target.closest(".item");
+    if (!li) return;
+    const itemId = li.dataset.id;
+
+    if (e.target.matches(".item-checkbox")) {
+      toggleItemDone(itemId);
+      return;
+    }
+
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const action = btn.dataset.action;
+
+    if (action === "delete") {
+      deleteItem(itemId);
+    } else if (action === "edit") {
+      const nb = getSelectedNotebook();
+      if (!nb) return;
+      const item = nb.items.find((i) => i.id === itemId);
+      if (!item) return;
+      const newText = window.prompt("Edit item:", item.text);
+      if (newText === null || !newText.trim()) return;
+      editItem(itemId, newText);
+    }
+  });
+
+  // Keep manual form as a way to reconfigure sync if you ever need it
+  if (syncForm) {
+    syncForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      config.gistId = (gistIdInput.value || "").trim();
+      config.token = (tokenInput.value || "").trim();
+      config.fileName = DEFAULT_GIST_FILENAME;
+      saveConfig();
+
+      if (!hasSyncConfig()) {
+        updateSyncStatus("Sync: not configured (missing Gist ID or token)");
+        return;
+      }
+
+      updateSyncStatus("Sync: loading from GitHub…");
+      loadStateFromGist();
+    });
+  }
+
+  // Auto-save when leaving the page (best effort; browsers may cut it short)
+  window.addEventListener("beforeunload", () => {
+    syncToGist();
+  });
+
+  // ---------- Init ----------
+  (async function init() {
+    loadState();
+    render();
+
+    // Ask for Gist ID/token on first load
+    await ensureSyncConfigInteractive();
+
+    // If still not configured, reflect state in UI
+    if (!hasSyncConfig()) {
+      updateSyncStatus("Sync: not configured (offline mode)");
+    }
+  })();
+</script>
+
 </body>
 </html>
