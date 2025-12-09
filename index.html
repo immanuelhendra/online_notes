@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>List Book</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <header class="sidebar-header">
+        <div class="logo-circle">LB</div>
+        <div>
+          <h1 class="app-title">List Book</h1>
+          <p class="app-subtitle">Your mini notebook library</p>
+        </div>
+      </header>
+
+      <section class="sidebar-section">
+        <div class="section-header">
+          <span class="section-title">Notebooks</span>
+        </div>
+        <ul id="notebook-list" class="notebook-list">
+          <!-- Filled by JS -->
+        </ul>
+
+        <form id="new-notebook-form" class="new-notebook-form">
+          <input
+            type="text"
+            id="new-notebook-input"
+            class="input"
+            placeholder="New notebook name..."
+            autocomplete="off"
+            required
+          />
+          <button type="submit" class="btn btn-primary">+ Add Notebook</button>
+        </form>
+      </section>
+    </aside>
+
+    <main class="main">
+      <header class="main-header">
+        <div class="title-group">
+          <h2 id="notebook-title" class="main-title">Select or create a notebook</h2>
+          <p id="notebook-meta" class="main-meta">No notebook selected.</p>
+        </div>
+        <div class="main-actions">
+          <button id="rename-notebook-btn" class="btn btn-ghost" disabled>Rename</button>
+          <button id="delete-notebook-btn" class="btn btn-danger" disabled>Delete</button>
+        </div>
+      </header>
+
+      <section class="items-section">
+        <form id="new-item-form" class="new-item-form">
+          <input
+            type="text"
+            id="new-item-input"
+            class="input"
+            placeholder="Add a new item..."
+            autocomplete="off"
+          />
+          <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+
+        <ul id="items-list" class="items-list">
+          <!-- Filled by JS -->
+        </ul>
+
+        <div id="empty-state" class="empty-state">
+          <p>Create a notebook on the left, then start dropping in your lists ✨</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
