@@ -4,10 +4,530 @@
   <meta charset="UTF-8" />
   <title>List Book</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-elevated: #0f172a;
+      --accent: #6366f1;
+      --accent-soft: rgba(99, 102, 241, 0.18);
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.14);
+      --border-subtle: rgba(148, 163, 184, 0.35);
+      --text: #e5e7eb;
+      --text-soft: #9ca3af;
+      --radius-lg: 18px;
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.9);
+      --shadow-subtle: 0 10px 30px rgba(15, 23, 42, 0.75);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: radial-gradient(circle at top, #1e293b 0, #020617 42%, #000 100%);
+      color: var(--text);
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+    }
+
+    /* Layout */
+
+    .app {
+      display: flex;
+      margin: 20px;
+      width: min(1200px, 100%);
+      height: calc(100vh - 40px);
+      border-radius: 28px;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.99));
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      backdrop-filter: blur(18px);
+    }
+
+    /* Sidebar */
+
+    .sidebar {
+      width: 320px;
+      border-right: 1px solid rgba(51, 65, 85, 0.9);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      background: radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.2), transparent 50%),
+                  radial-gradient(circle at 100% 100%, rgba(14, 165, 233, 0.15), transparent 55%),
+                  #020617;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 0 0, rgba(129, 140, 248, 0.5), transparent 65%);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.85);
+    }
+
+    .logo-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: conic-gradient(from 220deg, #6366f1, #22d3ee, #f97316, #6366f1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: 800;
+      font-size: 18px;
+      color: white;
+      text-shadow: 0 0 8px rgba(15, 23, 42, 0.6);
+    }
+
+    .app-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    .app-subtitle {
+      margin: 2px 0 0 0;
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    .sidebar-section {
+      margin-top: 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-soft);
+    }
+
+    .notebook-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .notebook-btn {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      padding: 10px 10px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.16s ease, transform 0.12s ease,
+                  box-shadow 0.12s ease, border-color 0.16s ease;
+      border: 1px solid transparent;
+    }
+
+    .notebook-btn:hover {
+      background: rgba(15, 23, 42, 0.8);
+      border-color: rgba(148, 163, 184, 0.4);
+      box-shadow: var(--shadow-subtle);
+      transform: translateY(-1px);
+    }
+
+    .notebook-btn.active {
+      background: radial-gradient(circle at 0 0, rgba(99, 102, 241, 0.3), rgba(15, 23, 42, 0.9));
+      border-color: rgba(129, 140, 248, 0.9);
+      box-shadow: 0 12px 35px rgba(88, 28, 135, 0.65);
+    }
+
+    .notebook-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .notebook-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #e5e7eb, #6366f1);
+      box-shadow: 0 0 12px rgba(129, 140, 248, 0.9);
+    }
+
+    .notebook-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+
+    .notebook-meta-small {
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    .new-notebook-form {
+      margin-top: 8px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(30, 64, 175, 0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Main */
+
+    .main {
+      flex: 1;
+      padding: 18px 20px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      background: radial-gradient(circle at 100% 0, rgba(52, 211, 153, 0.16), transparent 50%),
+                  radial-gradient(circle at 0 100%, rgba(59, 130, 246, 0.14), transparent 60%),
+                  #020617;
+    }
+
+    .main-header {
+      padding: 14px 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.94)),
+                  radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.2), transparent 50%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: var(--shadow-subtle);
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .main-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .main-meta {
+      margin: 0;
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    .main-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .items-section {
+      margin-top: 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: 22px;
+      background: radial-gradient(circle at 0 0, rgba(59, 130, 246, 0.25), transparent 55%),
+                  radial-gradient(circle at 100% 100%, rgba(245, 158, 11, 0.18), transparent 55%),
+                  rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .new-item-form {
+      display: flex;
+      gap: 10px;
+    }
+
+    .items-list {
+      list-style: none;
+      margin: 0;
+      padding: 4px 0 0 0;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .empty-state {
+      margin-top: auto;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-soft);
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px dashed rgba(148, 163, 184, 0.5);
+      background: radial-gradient(circle at 50% 0, rgba(148, 163, 184, 0.2), transparent 60%);
+    }
+
+    /* Items */
+
+    .item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 11px;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(30, 64, 175, 0.8);
+      backdrop-filter: blur(14px);
+      transition: background 0.15s ease, border-color 0.15s ease,
+                  transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.9);
+      border-color: rgba(129, 140, 248, 0.9);
+    }
+
+    .item-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .item-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .item-text {
+      flex: 1;
+      font-size: 14px;
+    }
+
+    .item-text.completed {
+      text-decoration: line-through;
+      color: var(--text-soft);
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* Buttons & inputs */
+
+    .btn {
+      border-radius: 999px;
+      border: 1px solid transparent;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      background: rgba(15, 23, 42, 0.95);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 0.15s ease, border-color 0.15s ease,
+                  transform 0.12s ease, box-shadow 0.12s ease;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1, #22c55e);
+      border-color: rgba(191, 219, 254, 0.8);
+      color: #0b1020;
+      box-shadow: 0 10px 28px rgba(59, 130, 246, 0.55);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 32px rgba(79, 70, 229, 0.7);
+    }
+
+    .btn-ghost {
+      background: rgba(15, 23, 42, 0.92);
+      border-color: rgba(148, 163, 184, 0.6);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(15, 23, 42, 0.98);
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.9);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background: var(--danger-soft);
+      border-color: rgba(248, 113, 113, 0.9);
+      color: #fecaca;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+      box-shadow: 0 12px 30px rgba(239, 68, 68, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .input {
+      flex: 1;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      padding: 7px 11px;
+      font-size: 13px;
+      background: rgba(15, 23, 42, 0.92);
+      color: var(--text);
+      outline: none;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.8);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease,
+                  background 0.15s ease, transform 0.08s ease;
+    }
+
+    .input::placeholder {
+      color: rgba(156, 163, 175, 0.9);
+    }
+
+    .input:focus {
+      border-color: rgba(129, 140, 248, 0.95);
+      box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.8),
+                  0 0 26px rgba(129, 140, 248, 0.6);
+      background: rgba(15, 23, 42, 0.98);
+      transform: translateY(-0.5px);
+    }
+
+    /* Scrollbars */
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(30, 64, 175, 0.7);
+      border-radius: 999px;
+    }
+
+    /* Sync card */
+
+    .sync-card {
+      margin-top: 12px;
+      padding: 12px 12px 10px;
+      border-radius: 18px;
+      background: radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.18), transparent 55%),
+                  radial-gradient(circle at 100% 100%, rgba(129, 140, 248, 0.18), transparent 55%),
+                  rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.9);
+    }
+
+    .sync-title {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .sync-text {
+      margin: 0 0 8px 0;
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    .sync-form {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sync-input {
+      font-size: 12px;
+    }
+
+    .btn-sync {
+      align-self: flex-end;
+      font-size: 11px;
+      padding-inline: 10px;
+    }
+
+    .sync-status {
+      margin: 6px 0 0 0;
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    /* Responsive */
+
+    @media (max-width: 900px) {
+      .app {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+      }
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(30, 64, 175, 0.7);
+      }
+      .main {
+        padding: 16px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .main-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .main-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
+      .new-item-form {
+        flex-direction: column;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="app">
@@ -24,9 +544,8 @@
         <div class="section-header">
           <span class="section-title">Notebooks</span>
         </div>
-        <ul id="notebook-list" class="notebook-list">
-          <!-- Filled by JS -->
-        </ul>
+
+        <ul id="notebook-list" class="notebook-list"></ul>
 
         <form id="new-notebook-form" class="new-notebook-form">
           <input
@@ -41,7 +560,6 @@
         </form>
       </section>
 
-      <!-- NEW: Sync (GitHub Gist) section -->
       <section class="sync-card">
         <h3 class="sync-title">Cloud sync</h3>
         <p class="sync-text">
@@ -60,4 +578,573 @@
             type="password"
             id="token-input"
             class="input sync-input"
-            placeholder="GitHub token with
+            placeholder="GitHub token with gist scope"
+            autocomplete="off"
+          />
+          <button type="submit" class="btn btn-ghost btn-sync">
+            Save sync settings
+          </button>
+        </form>
+
+        <p id="sync-status" class="sync-status">Sync: not configured</p>
+      </section>
+    </aside>
+
+    <main class="main">
+      <header class="main-header">
+        <div class="title-group">
+          <h2 id="notebook-title" class="main-title">Select or create a notebook</h2>
+          <p id="notebook-meta" class="main-meta">No notebook selected.</p>
+        </div>
+        <div class="main-actions">
+          <button id="rename-notebook-btn" class="btn btn-ghost" disabled>Rename</button>
+          <button id="delete-notebook-btn" class="btn btn-danger" disabled>Delete</button>
+        </div>
+      </header>
+
+      <section class="items-section">
+        <form id="new-item-form" class="new-item-form">
+          <input
+            type="text"
+            id="new-item-input"
+            class="input"
+            placeholder="Add a new item..."
+            autocomplete="off"
+          />
+          <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+
+        <ul id="items-list" class="items-list"></ul>
+
+        <div id="empty-state" class="empty-state">
+          <p>Create a notebook on the left, then start dropping in your lists ✨</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // ---------- Keys ----------
+    const STORAGE_KEY = "listBookData_v1";
+    const CONFIG_STORAGE_KEY = "listBookConfig_v1";
+    const DEFAULT_GIST_FILENAME = "listbook.json";
+
+    // ---------- State ----------
+    let state = {
+      notebooks: [],
+      selectedNotebookId: null,
+    };
+
+    let config = {
+      gistId: "",
+      token: "",
+      fileName: DEFAULT_GIST_FILENAME,
+    };
+
+    // ---------- DOM ----------
+    const notebookListEl = document.getElementById("notebook-list");
+    const newNotebookForm = document.getElementById("new-notebook-form");
+    const newNotebookInput = document.getElementById("new-notebook-input");
+
+    const notebookTitleEl = document.getElementById("notebook-title");
+    const notebookMetaEl = document.getElementById("notebook-meta");
+    const renameNotebookBtn = document.getElementById("rename-notebook-btn");
+    const deleteNotebookBtn = document.getElementById("delete-notebook-btn");
+
+    const newItemForm = document.getElementById("new-item-form");
+    const newItemInput = document.getElementById("new-item-input");
+    const itemsListEl = document.getElementById("items-list");
+    const emptyStateEl = document.getElementById("empty-state");
+
+    const syncForm = document.getElementById("sync-form");
+    const gistIdInput = document.getElementById("gist-id-input");
+    const tokenInput = document.getElementById("token-input");
+    const syncStatusEl = document.getElementById("sync-status");
+
+    // ---------- Local storage: state ----------
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          state.notebooks = [];
+          state.selectedNotebookId = null;
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed.notebooks)) throw new Error("Invalid data");
+        state.notebooks = parsed.notebooks;
+        state.selectedNotebookId = parsed.selectedNotebookId || null;
+      } catch (err) {
+        console.error("Error loading local state:", err);
+        state.notebooks = [];
+        state.selectedNotebookId = null;
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          notebooks: state.notebooks,
+          selectedNotebookId: state.selectedNotebookId,
+        })
+      );
+    }
+
+    // ---------- Local storage: config ----------
+
+    function loadConfig() {
+      try {
+        const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        config.gistId = parsed.gistId || "";
+        config.token = parsed.token || "";
+        config.fileName = parsed.fileName || DEFAULT_GIST_FILENAME;
+      } catch (err) {
+        console.error("Error loading sync config:", err);
+      }
+    }
+
+    function saveConfig() {
+      localStorage.setItem(
+        CONFIG_STORAGE_KEY,
+        JSON.stringify({
+          gistId: config.gistId,
+          token: config.token,
+          fileName: config.fileName || DEFAULT_GIST_FILENAME,
+        })
+      );
+    }
+
+    function hasSyncConfig() {
+      return Boolean(config.gistId && config.token);
+    }
+
+    function updateSyncStatus(message) {
+      if (syncStatusEl) syncStatusEl.textContent = message;
+    }
+
+    // ---------- Helpers ----------
+
+    function createId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    function getSelectedNotebook() {
+      return state.notebooks.find((n) => n.id === state.selectedNotebookId);
+    }
+
+    function formatDateShort(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "";
+      return d.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    }
+
+    // ---------- Gist sync ----------
+
+    async function loadStateFromGist() {
+      if (!hasSyncConfig()) {
+        updateSyncStatus("Sync: not configured");
+        return;
+      }
+
+      try {
+        updateSyncStatus("Sync: loading from GitHub…");
+
+        const res = await fetch("https://api.github.com/gists/" + config.gistId, {
+          headers: {
+            Authorization: "Bearer " + config.token,
+            Accept: "application/vnd.github+json",
+          },
+        });
+
+        if (!res.ok) throw new Error("Status " + res.status);
+        const gist = await res.json();
+        const file = gist.files && gist.files[config.fileName];
+
+        if (!file || !file.content) {
+          // No file yet: create it with current local state
+          await saveStateToGist();
+          updateSyncStatus("Sync: created data file in Gist");
+          return;
+        }
+
+        const parsed = JSON.parse(file.content);
+        if (Array.isArray(parsed.notebooks)) {
+          state.notebooks = parsed.notebooks;
+          state.selectedNotebookId = parsed.selectedNotebookId || null;
+          saveState();
+          render();
+          updateSyncStatus("Sync: loaded from GitHub");
+        } else {
+          updateSyncStatus("Sync: Gist content invalid, using local data");
+        }
+      } catch (err) {
+        console.error("Error loading from Gist:", err);
+        updateSyncStatus("Sync: error loading from GitHub");
+      }
+    }
+
+    async function saveStateToGist() {
+      if (!hasSyncConfig()) return;
+
+      const body = {
+        files: {
+          [config.fileName]: {
+            content: JSON.stringify({
+              notebooks: state.notebooks,
+              selectedNotebookId: state.selectedNotebookId,
+            }),
+          },
+        },
+      };
+
+      const res = await fetch("https://api.github.com/gists/" + config.gistId, {
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer " + config.token,
+          Accept: "application/vnd.github+json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error("Status " + res.status);
+      return res.json();
+    }
+
+    function syncToGist() {
+      if (!hasSyncConfig()) return;
+      updateSyncStatus("Sync: saving to GitHub…");
+      saveStateToGist()
+        .then(() => updateSyncStatus("Sync: up to date ✅"))
+        .catch((err) => {
+          console.error("Error saving to Gist:", err);
+          updateSyncStatus("Sync: error saving (check token/Gist ID)");
+        });
+    }
+
+    // ---------- Notebooks ----------
+
+    function createNotebook(name) {
+      const notebook = {
+        id: createId(),
+        name: name.trim() || "Untitled",
+        createdAt: new Date().toISOString(),
+        items: [],
+      };
+      state.notebooks.unshift(notebook);
+      state.selectedNotebookId = notebook.id;
+      saveState();
+      render();
+      syncToGist();
+    }
+
+    function renameNotebook(newName) {
+      const nb = getSelectedNotebook();
+      if (!nb) return;
+      nb.name = newName.trim() || nb.name;
+      saveState();
+      render();
+      syncToGist();
+    }
+
+    function deleteNotebook() {
+      if (!state.selectedNotebookId) return;
+      const idx = state.notebooks.findIndex((n) => n.id === state.selectedNotebookId);
+      if (idx === -1) return;
+      state.notebooks.splice(idx, 1);
+      state.selectedNotebookId = state.notebooks[0]?.id || null;
+      saveState();
+      render();
+      syncToGist();
+    }
+
+    function selectNotebook(id) {
+      state.selectedNotebookId = id;
+      saveState();
+      render();
+    }
+
+    // ---------- Items ----------
+
+    function addItem(text) {
+      const nb = getSelectedNotebook();
+      if (!nb) return;
+      const clean = text.trim();
+      if (!clean) return;
+      nb.items.unshift({
+        id: createId(),
+        text: clean,
+        done: false,
+        createdAt: new Date().toISOString(),
+      });
+      saveState();
+      render();
+      syncToGist();
+    }
+
+    function toggleItemDone(itemId) {
+      const nb = getSelectedNotebook();
+      if (!nb) return;
+      const item = nb.items.find((i) => i.id === itemId);
+      if (!item) return;
+      item.done = !item.done;
+      saveState();
+      render();
+      syncToGist();
+    }
+
+    function editItem(itemId, newText) {
+      const nb = getSelectedNotebook();
+      if (!nb) return;
+      const item = nb.items.find((i) => i.id === itemId);
+      if (!item) return;
+      const clean = newText.trim();
+      if (!clean) return;
+      item.text = clean;
+      saveState();
+      render();
+      syncToGist();
+    }
+
+    function deleteItem(itemId) {
+      const nb = getSelectedNotebook();
+      if (!nb) return;
+      const idx = nb.items.findIndex((i) => i.id === itemId);
+      if (idx === -1) return;
+      nb.items.splice(idx, 1);
+      saveState();
+      render();
+      syncToGist();
+    }
+
+    // ---------- Rendering ----------
+
+    function renderNotebooks() {
+      notebookListEl.innerHTML = "";
+      if (state.notebooks.length === 0) {
+        const li = document.createElement("li");
+        li.style.fontSize = "12px";
+        li.style.color = "var(--text-soft)";
+        li.textContent = "No notebooks yet. Start by adding one below.";
+        notebookListEl.appendChild(li);
+        return;
+      }
+
+      state.notebooks.forEach((nb) => {
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.className = "notebook-btn";
+        btn.dataset.id = nb.id;
+        if (nb.id === state.selectedNotebookId) btn.classList.add("active");
+
+        const left = document.createElement("div");
+        left.className = "notebook-main";
+
+        const dot = document.createElement("div");
+        dot.className = "notebook-dot";
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "notebook-name";
+        nameSpan.textContent = nb.name;
+
+        left.appendChild(dot);
+        left.appendChild(nameSpan);
+
+        const metaSpan = document.createElement("span");
+        metaSpan.className = "notebook-meta-small";
+        metaSpan.textContent = nb.items.length + " item" + (nb.items.length === 1 ? "" : "s");
+
+        btn.appendChild(left);
+        btn.appendChild(metaSpan);
+        li.appendChild(btn);
+        notebookListEl.appendChild(li);
+      });
+    }
+
+    function renderMain() {
+      const nb = getSelectedNotebook();
+
+      if (!nb) {
+        notebookTitleEl.textContent = "Select or create a notebook";
+        notebookMetaEl.textContent = "No notebook selected.";
+        renameNotebookBtn.disabled = true;
+        deleteNotebookBtn.disabled = true;
+        newItemInput.disabled = true;
+        itemsListEl.innerHTML = "";
+        emptyStateEl.style.display = "block";
+        return;
+      }
+
+      renameNotebookBtn.disabled = false;
+      deleteNotebookBtn.disabled = false;
+      newItemInput.disabled = false;
+
+      notebookTitleEl.textContent = nb.name;
+      const created = formatDateShort(nb.createdAt);
+      notebookMetaEl.textContent = created
+        ? "Created " + created + " • " + nb.items.length + " item" + (nb.items.length === 1 ? "" : "s")
+        : nb.items.length + " item" + (nb.items.length === 1 ? "" : "s");
+
+      itemsListEl.innerHTML = "";
+      emptyStateEl.style.display = nb.items.length === 0 ? "block" : "none";
+
+      nb.items.forEach((item) => {
+        const li = document.createElement("li");
+        li.className = "item";
+        li.dataset.id = item.id;
+
+        const left = document.createElement("div");
+        left.className = "item-left";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "item-checkbox";
+        checkbox.checked = item.done;
+
+        const textSpan = document.createElement("span");
+        textSpan.className = "item-text";
+        if (item.done) textSpan.classList.add("completed");
+        textSpan.textContent = item.text;
+
+        left.appendChild(checkbox);
+        left.appendChild(textSpan);
+
+        const actions = document.createElement("div");
+        actions.className = "item-actions";
+
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "btn btn-ghost";
+        editBtn.textContent = "Edit";
+        editBtn.dataset.action = "edit";
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "btn btn-danger";
+        deleteBtn.textContent = "Delete";
+        deleteBtn.dataset.action = "delete";
+
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+
+        li.appendChild(left);
+        li.appendChild(actions);
+
+        itemsListEl.appendChild(li);
+      });
+    }
+
+    function render() {
+      renderNotebooks();
+      renderMain();
+    }
+
+    // ---------- Events ----------
+
+    newNotebookForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!newNotebookInput.value.trim()) return;
+      createNotebook(newNotebookInput.value);
+      newNotebookInput.value = "";
+    });
+
+    notebookListEl.addEventListener("click", (e) => {
+      const btn = e.target.closest(".notebook-btn");
+      if (!btn) return;
+      selectNotebook(btn.dataset.id);
+    });
+
+    renameNotebookBtn.addEventListener("click", () => {
+      const nb = getSelectedNotebook();
+      if (!nb) return;
+      const newName = window.prompt("Rename notebook:", nb.name);
+      if (newName === null || !newName.trim()) return;
+      renameNotebook(newName);
+    });
+
+    deleteNotebookBtn.addEventListener("click", () => {
+      const nb = getSelectedNotebook();
+      if (!nb) return;
+      if (!window.confirm('Delete notebook "' + nb.name + '" and all its items?')) return;
+      deleteNotebook();
+    });
+
+    newItemForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!state.selectedNotebookId) return;
+      if (!newItemInput.value.trim()) return;
+      addItem(newItemInput.value);
+      newItemInput.value = "";
+    });
+
+    itemsListEl.addEventListener("click", (e) => {
+      const li = e.target.closest(".item");
+      if (!li) return;
+      const itemId = li.dataset.id;
+
+      if (e.target.matches(".item-checkbox")) {
+        toggleItemDone(itemId);
+        return;
+      }
+
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.dataset.action;
+
+      if (action === "delete") {
+        deleteItem(itemId);
+      } else if (action === "edit") {
+        const nb = getSelectedNotebook();
+        if (!nb) return;
+        const item = nb.items.find((i) => i.id === itemId);
+        if (!item) return;
+        const newText = window.prompt("Edit item:", item.text);
+        if (newText === null || !newText.trim()) return;
+        editItem(itemId, newText);
+      }
+    });
+
+    if (syncForm) {
+      syncForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        config.gistId = (gistIdInput.value || "").trim();
+        config.token = (tokenInput.value || "").trim();
+        config.fileName = DEFAULT_GIST_FILENAME;
+        saveConfig();
+
+        if (!hasSyncConfig()) {
+          updateSyncStatus("Sync: not configured (missing Gist ID or token)");
+          return;
+        }
+
+        updateSyncStatus("Sync: loading from GitHub…");
+        loadStateFromGist();
+      });
+    }
+
+    // ---------- Init ----------
+    (function init() {
+      loadConfig();
+      if (gistIdInput) gistIdInput.value = config.gistId || "";
+      if (tokenInput) tokenInput.value = config.token || "";
+      loadState();
+      render();
+
+      if (hasSyncConfig()) {
+        loadStateFromGist();
+      } else {
+        updateSyncStatus("Sync: not configured");
+      }
+    })();
+  </script>
+</body>
+</html>
